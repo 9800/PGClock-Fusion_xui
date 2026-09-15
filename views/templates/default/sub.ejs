@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="dark light">
-  <title>پنل کاربری</title>
+  <title>پنل کاربری - <%= data.user.email %></title>
   <style>
     @font-face {
       font-family: Vazirmatn;
@@ -753,7 +753,6 @@
     @media (min-width: 860px) {
       :root { --page: 1280px; }
       body { display: flex; flex-direction: column; }
-      /* bottom nav → top segmented tab bar */
       .mobile-nav {
         order: -1;
         position: static;
@@ -776,7 +775,6 @@
       .page { padding-top: 16px; padding-bottom: 44px; }
       .toast { bottom: 40px; }
 
-      /* these sit inside the narrower column, so fit to the column, not the viewport */
       .metrics { grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); }
       .detail-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
       .hero-grid { grid-template-columns: repeat(2, 1fr); }
@@ -787,14 +785,12 @@
         align-items: stretch;
       }
       .account-grid > * { margin-bottom: 0; }
-      /* account card runs the full height of the chart + details column beside it */
       .account-grid > div:first-child { display: flex; }
       .account-grid > div:first-child > .panel {
         flex: 1;
         display: flex; flex-direction: column;
       }
       .account-grid > div:first-child .rings-grid { flex: 1; }
-      /* auto margins soak up the slack: title stays top, footer bottom, ring centred */
       .account-grid > div:first-child .ring-wrap { margin-block: auto; }
       .list, .os-grid {
         display: grid;
@@ -804,10 +800,8 @@
       .chart { min-height: 230px; }
       .bars { min-height: 230px; }
       .bar-wrap .bar { height: 190px; max-width: 56px; }
-      /* bars are wide enough here — no need to stack the label vertically */
       .bar b { writing-mode: horizontal-tb; font-size: 10.5px; }
       .bar-wrap > span { font-size: 11px; }
-      /* dialogs become centred windows instead of bottom sheets */
       .modal { align-items: center; padding: 28px; }
     }
     @media (min-width: 1180px) {
@@ -822,6 +816,78 @@
       * { animation: none !important; transition: none !important; }
     }
   </style>
+
+  <!-- ============ X-UI / PGClock FUSION INTERCEPTOR ============ -->
+  <script>
+    // 1. Preload Data injected from Node.js server (3x-ui API)
+    window.PRELOADED_DATA = {
+      user: <%- JSON.stringify(data.user) %>,
+      links: <%- JSON.stringify(data.links) %>,
+      apps: <%- JSON.stringify(data.apps || []) %>,
+      headers: { 
+        announce: "", 
+        announceUrl: "", 
+        supportUrl: "<%= data.user.support_url %>" 
+      },
+      ctx: { 
+        subUrl: "<%= data.suburl %>", 
+        panel: "<%= data.suburl %>" 
+      }
+    };
+
+    // 2. Brand & Config settings for PGClock script
+    window.PASARGUARD_CONFIG = {
+      subscriptionUrl: "<%= data.suburl %>",
+      panelUrl: "<%= data.suburl %>",
+      supportUrl: "<%= data.user.support_url %>"
+    };
+
+    window.PANEL_BRAND = {
+      name: "<%= data.brandName %>",
+      subtitle: { fa: "<%= data.brandName %>", en: "<%= data.brandName %>" },
+      logoUrl: "<%= data.brandLogo %>"
+    };
+
+    // 3. Intercept global fetch to serve preloaded data instead of calling Pasarguard API
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+      if (typeof url === 'string') {
+        if (url.includes('/info') || url.includes('/info.json') || url.endsWith('/user')) {
+          return Promise.resolve({ 
+            ok: true, 
+            json: () => Promise.resolve({ user: window.PRELOADED_DATA.user, headers: window.PRELOADED_DATA.headers }) 
+          });
+        }
+        if (url.includes('/links') || url.includes('/links.json')) {
+          return Promise.resolve({ 
+            ok: true, 
+            json: () => Promise.resolve(window.PRELOADED_DATA.links) 
+          });
+        }
+        if (url.includes('/apps') || url.includes('/apps.json')) {
+          return Promise.resolve({ 
+            ok: true, 
+            json: () => Promise.resolve(window.PRELOADED_DATA.apps) 
+          });
+        }
+        if (url.includes('/usage') || url.includes('/usage.json')) {
+          return Promise.resolve({ 
+            ok: true, 
+            json: () => Promise.resolve([]) 
+          });
+        }
+        // Handle sub link fetching for base64 configs
+        if (url === window.PRELOADED_DATA.ctx.subUrl || url.endsWith('/raw')) {
+           return Promise.resolve({
+             ok: true,
+             text: () => Promise.resolve(window.PRELOADED_DATA.links.join('\n')),
+             json: () => Promise.resolve({ links: window.PRELOADED_DATA.links })
+           });
+        }
+      }
+      return originalFetch.apply(this, arguments);
+    };
+  </script>
 </head>
 <body data-view="account">
   <div class="page">
@@ -1013,9 +1079,9 @@
   var LS = { panel: "pg_user_panel", token: "pg_user_token", lang: "pg_user_lang", theme: "pg_user_theme" };
 
   var DEFAULT_BRAND = {
-    name: "PGClock Fusion",          // ← نام برند
+    name: "PGClock Fusion",
     subtitle: { fa: "پنل اشتراک", en: "Subscription panel" },
-    logoUrl: ""                      // ← URL لوگو (خالی = آیکن پیش‌فرض)
+    logoUrl: ""
   };
 
   var BRAND = window.MRCLOCK_BRAND || window.PASARGUARD_BRAND || window.PANEL_BRAND || DEFAULT_BRAND;
@@ -1197,7 +1263,6 @@
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
-  /* ---------- live clock (Jalali in fa) ---------- */
   function tickClock() {
     var now = new Date();
     var timeText;
@@ -1216,7 +1281,6 @@
     }
   }
 
-  /* ---------- token / url parsing ---------- */
   function cleanToken(value) {
     value = String(value || "").trim().replace(/[​-‍﻿]/g, "").replace(/^['"]|['"]$/g, "");
     try { value = decodeURIComponent(value); } catch (e) {}
@@ -1281,7 +1345,6 @@
     return null;
   }
 
-  /* ---------- fetch ---------- */
   function request(url, options, timeout) {
     options = options || {};
     timeout = timeout || 10000;
@@ -1361,7 +1424,6 @@
       .catch(function () { return null; });
   }
 
-  /* ---------- format ---------- */
   function stamp(value) {
     if (value == null || value === "") return null;
     var n = Number(value);
@@ -1425,7 +1487,6 @@
     return null;
   }
 
-  /* ---------- status ---------- */
   function statusKey(value) {
     value = String(value || "active").toLowerCase();
     if (value === "enable" || value === "enabled" || value === "true") return "active";
@@ -1461,7 +1522,6 @@
     return '<article class="' + kind + '"><div class="stat-top">' + statIcon(icon, tone) + '<span class="k">' + esc(label) + '</span></div><span class="v">' + esc(value) + '</span></article>';
   }
 
-  /* ---------- rings ---------- */
   function setRing(fillEl, cardEl, pct, tone) {
     pct = Math.max(0, Math.min(1, Number(pct) || 0));
     fillEl.style.strokeDasharray = RING_C;
@@ -1476,7 +1536,6 @@
     var expire = status === "on_hold" && user.on_hold_timeout ? user.on_hold_timeout : get(user, ["expire", "expire_date", "expiry_time", "end_time"]);
     var created = get(user, ["created_at", "created", "sub_last_user_agent_at", "start_date"]);
 
-    // days ring
     var days = expire ? daysLeftNum(expire) : null;
     var daysPct = 1, daysTone = "good";
     if (expire && days != null) {
@@ -1497,7 +1556,6 @@
     }
     setRing($("ring-days"), $("ring-days-card"), daysPct, daysTone);
 
-    // data ring
     var dataPct = 1, dataTone = "good";
     if (limit > 0) {
       var remain = Math.max(0, limit - used);
@@ -1515,7 +1573,6 @@
     setRing($("ring-data"), $("ring-data-card"), dataPct, dataTone);
   }
 
-  /* ---------- account ---------- */
   function expireHero(user, status) {
     var expire = status === "on_hold" && user.on_hold_timeout ? user.on_hold_timeout : get(user, ["expire", "expire_date", "expiry_time", "end_time"]);
     var el = $("expire-date");
@@ -1591,7 +1648,6 @@
     ].join("") : "";
   }
 
-  /* ---------- alerts / notice / support ---------- */
   function decodeAnnounce(raw) {
     if (!raw) return "";
     if (raw.indexOf("base64:") === 0) return b64(raw.slice(7)) || raw.slice(7);
@@ -1661,7 +1717,6 @@
     btn.setAttribute("aria-label", tr("support"));
   }
 
-  /* ---------- servers / configs ---------- */
   var COUNTRY_WORDS = {
     iran: "IR", germany: "DE", german: "DE", germani: "DE", deutschland: "DE",
     sweden: "SE", finland: "FI", france: "FR", netherlands: "NL", holland: "NL",
@@ -1785,7 +1840,6 @@
     }).join("");
   }
 
-  /* ---------- apps ---------- */
   function localizedText(value) {
     if (!value) return "";
     if (typeof value === "string") return value;
@@ -1902,7 +1956,6 @@
       (actions ? '<div class="app-actions">' + actions + '</div>' : '') + '</article>';
   }
 
-  /* ---------- usage ---------- */
   function normalizeUsage(data) {
     var out = {};
     var stats = data && (data.stats || data.data || data.usage || data);
@@ -1986,7 +2039,6 @@
     });
   }
 
-  /* ---------- platforms ---------- */
   function canonical(value) {
     value = String(value || "other").toLowerCase().replace(/[\s_-]+/g, "");
     if (value === "iphone" || value === "ipad" || value === "ipados") return "ios";
@@ -2043,7 +2095,6 @@
     try { return new URL(url, state.ctx ? state.ctx.panel + "/" : location.href).href; } catch (e) { return url; }
   }
 
-  /* ---------- copy / qr / wireguard ---------- */
   function copyText(text, btn) {
     function done() {
       toast(tr("copied"), "success");
@@ -2197,7 +2248,6 @@
     $(id).setAttribute("aria-hidden", "true");
   }
 
-  /* ---------- flow ---------- */
   function renderAll() {
     renderAccount();
     renderNotice();
