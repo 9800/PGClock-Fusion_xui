@@ -1,0 +1,33 @@
+{
+  "name": "pgclock-fusion-xui",
+  "version": "1.0.0",
+  "description": "PGClock Fusion - Modern subscription template for 3x-ui panels",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "x-ui",
+    "3x-ui",
+    "subscription",
+    "template",
+    "pgclock",
+    "v2ray",
+    "xray"
+  ],
+  "author": "9800",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "jalaali-js": "^1.2.7",
+    "node-fetch": "^3.3.2",
+    "qs": "^6.14.0",
+    "speakeasy": "^2.0.0"
+  }
+}
