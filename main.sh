@@ -16,7 +16,7 @@ REPO_RAW="https://raw.githubusercontent.com/9800/PGClock-Fusion_xui/main"
 
 clear
 echo -e "${BLUE}+--------------------------------------------------------------------+${NC}"
-echo -e "${BLUE}|   PGClock Fusion X-UI - Secure Auto Installer (3x-ui Detection)   |${NC}"
+echo -e "${BLUE}|   PGClock Fusion X-UI - Secure Auto Installer                     |${NC}"
 echo -e "${BLUE}|   Repo: github.com/9800/PGClock-Fusion_xui                        |${NC}"
 echo -e "${BLUE}+--------------------------------------------------------------------+${NC}"
 
@@ -25,21 +25,9 @@ read_setting() {
     sqlite3 "$XUI_DB" "SELECT value FROM settings WHERE key='$1' LIMIT 1;" 2>/dev/null
 }
 
-find_available_port() {
-    local start_port=$1
-    local end_port=$2
-    for port in $(seq $start_port $end_port); do
-        if ! netstat -tuln 2>/dev/null | grep -q ":$port "; then
-            echo $port
-            return
-        fi
-    done
-    echo "$start_port"
-}
-
 # ========== STEP 1: Install Dependencies ==========
 install_dependencies() {
-    echo -e "\n${YELLOW}[1/8] Installing dependencies...${NC}"
+    echo -e "\n${YELLOW}[1/7] Installing dependencies...${NC}"
     apt-get update -qq > /dev/null 2>&1
     apt-get install -y -qq curl wget jq sqlite3 net-tools > /dev/null 2>&1
     
@@ -52,7 +40,7 @@ install_dependencies() {
 
 # ========== STEP 2: Find 3x-ui Database ==========
 find_database() {
-    echo -e "\n${YELLOW}[2/8] Finding 3x-ui database...${NC}"
+    echo -e "\n${YELLOW}[2/7] Finding 3x-ui database...${NC}"
     
     XUI_DB=""
     for db_path in "/etc/x-ui/x-ui.db" "/usr/local/x-ui/bin/x-ui.db" "/usr/local/x-ui/x-ui.db" "/opt/x-ui/bin/x-ui.db" "/opt/x-ui/x-ui.db" "/root/x-ui/x-ui.db"; do
@@ -68,8 +56,7 @@ find_database() {
     
     if [ -z "$XUI_DB" ]; then
         echo -e "  ${RED}✗ 3x-ui database not found!${NC}"
-        echo -e "  ${YELLOW}Please make sure 3x-ui is installed first.${NC}"
-        echo -e "  ${BLUE}Install 3x-ui: bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)${NC}"
+        echo -e "  ${YELLOW}Please install 3x-ui first.${NC}"
         exit 1
     fi
     
@@ -78,7 +65,7 @@ find_database() {
 
 # ========== STEP 3: Auto-Detect Settings ==========
 detect_settings() {
-    echo -e "\n${YELLOW}[3/8] Reading settings from database...${NC}"
+    echo -e "\n${YELLOW}[3/7] Reading settings from database...${NC}"
     
     # Default values
     WEB_PORT="2053"
@@ -188,64 +175,48 @@ detect_settings() {
     echo -e "    Username: ${GREEN}$PANEL_USER${NC}"
     echo -e "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
-    # Check for port conflict
-    check_port_conflict
+    # Disable 3x-ui subscription server (replace it)
+    disable_xui_subscription
 }
 
-# ========== STEP 4: Check Port Conflict ==========
-check_port_conflict() {
-    echo -e "\n${YELLOW}[4/8] Checking for port conflicts...${NC}"
+# ========== STEP 4: Disable 3x-ui Subscription Server ==========
+disable_xui_subscription() {
+    echo -e "\n${YELLOW}[4/7] Preparing subscription server...${NC}"
     
     if [ "$SUB_ENABLE" = "true" ] || [ "$SUB_ENABLE" = "1" ]; then
-        echo -e "  ${YELLOW}⚠ WARNING: 3x-ui's subscription server is ENABLED on port $SUB_PORT${NC}"
-        echo -e "  ${YELLOW}Installing on the same port will cause a conflict!${NC}"
-        echo -e ""
-        echo -e "  ${BLUE}Choose an option:${NC}"
-        echo -e "    ${GREEN}1.${NC} Use a different port for PGClock ${YELLOW}(recommended)${NC}"
-        echo -e "    ${GREEN}2.${NC} Disable 3x-ui's subscription server ${YELLOW}(PGClock takes over)${NC}"
-        echo -e "    ${GREEN}3.${NC} Cancel installation"
-        echo -e ""
+        echo -e "  ${YELLOW}→ Disabling 3x-ui's built-in subscription server...${NC}"
         
-        read -p "$(echo -e ${YELLOW}'Choose option (1/2/3): '${NC})" conflict_choice
+        # Disable 3x-ui's built-in subscription server
+        sqlite3 "$XUI_DB" "UPDATE settings SET value='false' WHERE key='subEnable';" 2>/dev/null
         
-        case $conflict_choice in
-            1)
-                local suggested_port=$(find_available_port 3000 4000)
-                echo -e "\n  ${BLUE}Suggested port: $suggested_port${NC}"
-                read -p "  Enter port for PGClock [$suggested_port]: " input_port
-                SUB_PORT=${input_port:-$suggested_port}
-                echo -e "  ${GREEN}✓ Using port $SUB_PORT for PGClock${NC}"
-                ;;
-            2)
-                echo -e "\n  ${YELLOW}Disabling 3x-ui subscription server...${NC}"
-                sqlite3 "$XUI_DB" "UPDATE settings SET value='false' WHERE key='subEnable';" 2>/dev/null
-                echo -e "  ${GREEN}✓ 3x-ui subscription server disabled${NC}"
-                echo -e "  ${YELLOW}⚠ You must restart 3x-ui: systemctl restart x-ui${NC}"
-                ;;
-            3)
-                echo -e "${RED}Installation cancelled${NC}"
-                exit 0
-                ;;
-            *)
-                echo -e "${RED}Invalid option. Installation cancelled${NC}"
-                exit 1
-                ;;
-        esac
+        echo -e "  ${GREEN}✓ 3x-ui subscription server disabled${NC}"
+        echo -e "  ${GREEN}✓ Port $SUB_PORT is now available${NC}"
+        
+        # Restart 3x-ui to apply changes
+        echo -e "  ${YELLOW}→ Restarting 3x-ui to free the port...${NC}"
+        systemctl restart x-ui 2>/dev/null
+        sleep 2
+        echo -e "  ${GREEN}✓ 3x-ui restarted${NC}"
     else
-        echo -e "  ${GREEN}✓ No conflict - 3x-ui subscription server is disabled${NC}"
+        echo -e "  ${GREEN}✓ 3x-ui subscription server is already disabled${NC}"
     fi
+    
+    echo -e ""
+    echo -e "  ${GREEN}✓ PGClock will now run on port $SUB_PORT${NC}"
+    echo -e "  ${GREEN}✓ Same port as 3x-ui's subscription server${NC}"
+    echo -e "  ${GREEN}✓ No port change needed${NC}"
 }
 
 # ========== STEP 5: Get Password Securely ==========
 get_password() {
-    echo -e "\n${YELLOW}[5/8] Setting up secure credentials...${NC}"
+    echo -e "\n${YELLOW}[5/7] Setting up secure credentials...${NC}"
     
     if [ -z "$PANEL_USER" ]; then
         read -p "  Panel Username: " PANEL_USER
     fi
     
     echo -e "  ${BLUE}Username:${NC} ${GREEN}$PANEL_USER${NC}"
-    echo -e "  ${YELLOW}⚠ Password will be stored securely in an environment file (not in config)${NC}"
+    echo -e "  ${YELLOW}⚠ Password will be stored securely (not in config file)${NC}"
     read -s -p "  Enter panel password: " PANEL_PASS
     echo
     
@@ -257,7 +228,7 @@ get_password() {
 
 # ========== STEP 6: Install Project ==========
 install_project() {
-    echo -e "\n${YELLOW}[6/8] Installing PGClock Fusion...${NC}"
+    echo -e "\n${YELLOW}[6/7] Installing PGClock Fusion...${NC}"
     
     sudo rm -rf "$PROJECT_DIR"
     sudo mkdir -p "$PROJECT_DIR"
@@ -277,7 +248,6 @@ install_project() {
 # Auto-generated by PGClock Secure Installer
 # Source: github.com/9800/PGClock-Fusion_xui
 # ==========================================
-# Note: Password is stored securely in .env.credentials
 
 PROTOCOL=$SUB_PROTOCOL
 HOST=$SUB_DOMAIN
@@ -321,19 +291,13 @@ EOF
     
     echo -e "${GREEN}✓ Project files installed${NC}"
     echo -e "  ${GREEN}✓ Credentials stored securely in: $ENV_FILE${NC}"
-    echo -e "  ${GREEN}✓ File permissions: 600 (root only)${NC}"
 }
 
 # ========== STEP 7: Install Node Dependencies & Create Service ==========
 install_node_deps() {
-    echo -e "\n${YELLOW}[7/8] Installing Node.js dependencies...${NC}"
+    echo -e "\n${YELLOW}[7/7] Starting services...${NC}"
     cd "$PROJECT_DIR" || exit
     npm install --production > /dev/null 2>&1
-    echo -e "${GREEN}✓ Node dependencies installed${NC}"
-}
-
-create_service() {
-    echo -e "\n${YELLOW}[8/8] Creating systemd service...${NC}"
     
     systemctl stop PGCLOCK_XUI 2>/dev/null
     
@@ -363,7 +327,7 @@ EOF
     echo -e "${GREEN}✓ Service created and started${NC}"
 }
 
-# ========== STEP 9: Show Results ==========
+# ========== STEP 8: Show Results ==========
 show_results() {
     local sub_url="$SUB_BASE/${SUB_PATH}/{user.subId}"
     
@@ -378,7 +342,7 @@ show_results() {
     echo -e "  ${GREEN}$sub_url${NC}"
     
     echo -e "\n${BLUE}📊 Settings imported from 3x-ui:${NC}"
-    echo -e "  ${GREEN}subPort${NC}:        $SUB_PORT"
+    echo -e "  ${GREEN}subPort${NC}:        $SUB_PORT ${YELLOW}(unchanged)${NC}"
     echo -e "  ${GREEN}subPath${NC}:        $SUB_PATH"
     echo -e "  ${GREEN}subTitle${NC}:       ${SUB_TITLE:-Not set}"
     echo -e "  ${GREEN}subSupportUrl${NC}: ${SUB_SUPPORT_URL:-Not set}"
@@ -389,14 +353,12 @@ show_results() {
     echo -e "  ${GREEN}✓ Password NOT stored in config file${NC}"
     echo -e "  ${GREEN}✓ Credentials stored in: $ENV_FILE${NC}"
     echo -e "  ${GREEN}✓ File permissions: 600 (root only)${NC}"
-    echo -e "  ${GREEN}✓ Loaded via systemd EnvironmentFile${NC}"
     
     echo -e "\n${BLUE}🛠  Management:${NC}"
     echo -e "  ${YELLOW}systemctl status PGCLOCK_XUI${NC}"
     echo -e "  ${YELLOW}systemctl restart PGCLOCK_XUI${NC}"
     echo -e "  ${YELLOW}journalctl -u PGCLOCK_XUI -f${NC}"
     echo -e "  ${YELLOW}nano $CONFIG_FILE${NC}"
-    echo -e "  ${YELLOW}nano $ENV_FILE${NC}  ${RED}(credentials)${NC}"
     
     if command -v ufw &> /dev/null; then
         read -p "$(echo -e ${YELLOW}'[?] Open port $SUB_PORT in UFW? (Y/n): '${NC})" open_fw
@@ -405,6 +367,12 @@ show_results() {
             echo -e "${GREEN}✓ Firewall port opened${NC}"
         fi
     fi
+    
+    echo -e "\n${BLUE}🎯 What happened:${NC}"
+    echo -e "  ${YELLOW}1.${NC} 3x-ui's subscription server was ${GREEN}disabled${NC}"
+    echo -e "  ${YELLOW}2.${NC} PGClock template is now running on ${GREEN}port $SUB_PORT${NC}"
+    echo -e "  ${YELLOW}3.${NC} ${GREEN}Same port${NC} as before - no change!"
+    echo -e "  ${YELLOW}4.${NC} Users will see the new PGClock template"
 }
 
 # ========== Uninstall ==========
@@ -415,6 +383,15 @@ uninstall_project() {
     sudo rm -rf "$PROJECT_DIR"
     sudo rm -f "$SERVICE_FILE"
     sudo systemctl daemon-reload
+    
+    # Re-enable 3x-ui subscription server
+    if [ -n "$XUI_DB" ]; then
+        echo -e "  ${YELLOW}→ Re-enabling 3x-ui subscription server...${NC}"
+        sqlite3 "$XUI_DB" "UPDATE settings SET value='true' WHERE key='subEnable';" 2>/dev/null
+        systemctl restart x-ui 2>/dev/null
+        echo -e "  ${GREEN}✓ 3x-ui subscription server re-enabled${NC}"
+    fi
+    
     echo -e "${GREEN}✓ Uninstalled${NC}"
 }
 
@@ -424,7 +401,6 @@ update_project() {
     systemctl stop PGCLOCK_XUI 2>/dev/null
     cd "$PROJECT_DIR" || exit
     
-    # Backup config and credentials
     cp "$CONFIG_FILE" /tmp/pgclock.config.bak
     [ -f "$ENV_FILE" ] && cp "$ENV_FILE" /tmp/pgclock.env.bak
     
@@ -435,7 +411,6 @@ update_project() {
     
     npm install --production > /dev/null 2>&1
     
-    # Restore config and credentials
     mv /tmp/pgclock.config.bak "$CONFIG_FILE"
     [ -f /tmp/pgclock.env.bak ] && mv /tmp/pgclock.env.bak "$ENV_FILE"
     
@@ -447,7 +422,7 @@ update_project() {
 show_menu() {
     clear
     echo -e "${BLUE}+--------------------------------------------------------------------+${NC}"
-    echo -e "${BLUE}|        PGClock Fusion X-UI - Secure Management Menu               |${NC}"
+    echo -e "${BLUE}|        PGClock Fusion X-UI - Management Menu                      |${NC}"
     echo -e "${BLUE}+--------------------------------------------------------------------+${NC}"
     echo -e "  ${GREEN}1.${NC} Install PGClock Fusion"
     echo -e "  ${GREEN}2.${NC} Update PGClock Fusion"
@@ -455,7 +430,7 @@ show_menu() {
     echo -e "  ${GREEN}4.${NC} Edit Credentials"
     echo -e "  ${GREEN}5.${NC} View Service Status"
     echo -e "  ${GREEN}6.${NC} View Logs"
-    echo -e "  ${GREEN}7.${NC} Uninstall"
+    echo -e "  ${GREEN}7.${NC} Uninstall (re-enable 3x-ui subscription)"
     echo -e "  ${GREEN}0.${NC} Exit"
     echo -e "${BLUE}+--------------------------------------------------------------------+${NC}"
     
@@ -469,7 +444,6 @@ show_menu() {
             get_password
             install_project
             install_node_deps
-            create_service
             show_results
             ;;
         2) update_project ;;
@@ -495,7 +469,6 @@ if [ "$1" = "install" ]; then
     get_password
     install_project
     install_node_deps
-    create_service
     show_results
 else
     show_menu
