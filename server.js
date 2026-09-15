@@ -36,8 +36,8 @@ const {
     USERNAME = 'admin', PASSWORD = 'admin', PROTOCOL = 'https', SUBSCRIPTION = '',
     PUBLIC_KEY_PATH = '', PRIVATE_KEY_PATH = '', TEMPLATE_NAME = 'default',
     SUB_HTTP_PORT = '2082', SUB_HTTPS_PORT = '2083', TELEGRAM_URL = '',
-    Backup_link: BACKUP_LINK = '', TOTP_SECRET = '', TWO_FACTOR = 'false',
-    BRAND_NAME = 'PGClock X-UI', BRAND_LOGO = ''
+    WHATSAPP_URL = '', Backup_link: BACKUP_LINK = '', TOTP_SECRET = '', 
+    TWO_FACTOR = 'false', BRAND_NAME = 'PGClock Fusion X-UI', BRAND_LOGO = ''
 } = config;
 
 const fetchWithRetry = async (url, options, retries = 3) => {
@@ -78,7 +78,9 @@ app.get(`/${subPath}/:subId`, async (req, res) => {
         }
 
         let loginPayload = { username: USERNAME, password: PASSWORD };
-        if (TWO_FACTOR === 'true' && TOTP_SECRET) loginPayload.twoFactorCode = speakeasy.totp({ secret: TOTP_SECRET, encoding: 'base32', window: 1 });
+        if (TWO_FACTOR === 'true' && TOTP_SECRET) {
+            loginPayload.twoFactorCode = speakeasy.totp({ secret: TOTP_SECRET, encoding: 'base32', window: 1 });
+        }
 
         const loginResponse = await fetchWithRetry(`${PROTOCOL}://${dvhost_host}:${dvhost_port}/${dvhost_path}/login`, {
             method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: qs.stringify(loginPayload),
@@ -96,15 +98,28 @@ app.get(`/${subPath}/:subId`, async (req, res) => {
         if (!trafficData.obj) return res.status(404).send("Traffic data not found");
 
         const user = {
-            email: trafficData.obj.email, expire: trafficData.obj.expiryTime,
-            used_traffic: trafficData.obj.up + trafficData.obj.down, total_traffic: trafficData.obj.total,
-            status: trafficData.obj.enable ? "active" : "disabled", subId: targetSubId, support_url: TELEGRAM_URL
+            email: trafficData.obj.email, 
+            expire: trafficData.obj.expiryTime,
+            used_traffic: trafficData.obj.up + trafficData.obj.down, 
+            total_traffic: trafficData.obj.total,
+            status: trafficData.obj.enable ? "active" : "disabled", 
+            subId: targetSubId, 
+            support_url: TELEGRAM_URL
         };
 
         const links = Buffer.from(suburl_content, 'base64').toString('utf-8').split('\n').filter(l => l.trim() !== '');
         if (BACKUP_LINK) links.unshift(BACKUP_LINK);
 
-        res.render("sub", { data: { user, links, apps: [], suburl: `${req.protocol}://${req.get('host')}${req.originalUrl}`, brandName: BRAND_NAME, brandLogo: BRAND_LOGO } });
+        res.render("sub", { 
+            data: { 
+                user, 
+                links, 
+                apps: [], 
+                suburl: `${req.protocol}://${req.get('host')}${req.originalUrl}`, 
+                brandName: BRAND_NAME, 
+                brandLogo: BRAND_LOGO 
+            } 
+        });
     } catch (error) {
         console.error("Error:", error.message);
         res.status(500).send("Internal Server Error: " + error.message);
