@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <title>PGClock Fusion - {{ .user.username }}</title>
+  
+  <style>
+    @font-face {
+      font-family: Vazirmatn;
+      src: url("https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn%5Bwght%5D.woff2") format("woff2-variations");
+      font-weight: 100 900;
+      font-display: swap;
+    }
+
+    :root {
+      color-scheme: dark;
+      --ink: #f4f6fd;
+      --muted: rgba(244, 246, 253, 0.66);
+      --faint: rgba(244, 246, 253, 0.4);
+      --line: rgba(255, 255, 255, 0.16);
+      --line-soft: rgba(255, 255, 255, 0.09);
+      --bg: #06080f;
+      --glass: rgba(13, 16, 30, 0.78);
+      --glass-2: rgba(10, 13, 24, 0.66);
+      --chip-bg: rgba(9, 12, 22, 0.6);
+      --nav-bg: rgba(11, 14, 27, 0.92);
+      --nav-border: rgba(139, 168, 255, 0.2);
+      --accent: #8ba8ff;
+      --accent-2: #6f8dff;
+      --accent-soft: rgba(139, 168, 255, 0.12);
+      --accent-line: rgba(139, 168, 255, 0.28);
+      --good: #5fe0a0;
+      --good-soft: rgba(95, 224, 160, 0.12);
+      --good-line: rgba(95, 224, 160, 0.4);
+      --warn: #f4c86c;
+      --warn-soft: rgba(244, 200, 108, 0.12);
+      --warn-line: rgba(244, 200, 108, 0.38);
+      --bad: #ff8f86;
+      --bad-soft: rgba(255, 143, 134, 0.12);
+      --bad-line: rgba(255, 143, 134, 0.4);
+      --cyan: #38d5f5;
+      --violet: #c08bff;
+      --orange: #ffab66;
+      --rose: #ff85be;
+      --modal-overlay: rgba(2, 4, 10, 0.64);
+      --modal-surface: rgba(12, 15, 28, 0.97);
+      --ring-track: rgba(255, 255, 255, 0.07);
+      --ring-dots: rgba(139, 168, 255, 0.3);
+      --shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+      --r-card: 24px;
+      --r-box: 17px;
+      --r-control: 14px;
+      --page: 1140px;
+      --nav-height: 76px;
+    }
+
+    html[data-theme="light"] {
+      color-scheme: light;
+      --ink: #101a2e;
+      --muted: rgba(16, 26, 46, 0.66);
+      --faint: rgba(16, 26, 46, 0.44);
+      --line: rgba(16, 26, 46, 0.13);
+      --line-soft: rgba(16, 26, 46, 0.08);
+      --bg: #e9f0fa;
+      --glass: rgba(255, 255, 255, 0.86);
+      --glass-2: rgba(255, 255, 255, 0.68);
+      --chip-bg: rgba(255, 255, 255, 0.78);
+      --nav-bg: rgba(255, 255, 255, 0.94);
+      --accent: #4a6cd8;
+      --accent-2: #3d5cc4;
+      --good: #16a26a;
+      --warn: #c07f16;
+      --bad: #d64545;
+      --shadow: 0 16px 40px rgba(60, 90, 160, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: Vazirmatn, "Segoe UI", Tahoma, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(52rem 34rem at 84% -6%, rgba(101, 132, 255, 0.2), transparent 60%),
+        radial-gradient(46rem 30rem at -8% 30%, rgba(56, 213, 245, 0.1), transparent 62%),
+        radial-gradient(50rem 36rem at 50% 112%, rgba(140, 96, 255, 0.13), transparent 64%);
+      pointer-events: none;
+    }
+
+    .page {
+      max-width: var(--page);
+      margin: 0 auto;
+      padding: 18px clamp(14px, 3vw, 28px) 120px;
+    }
+
+    .glass {
+      background: var(--glass);
+      border: 1px solid var(--line-soft);
+      border-radius: var(--r-card);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-logo {
+      width: 46px; height: 46px;
+      display: grid; place-items: center;
+      border-radius: 15px;
+      color: var(--accent);
+      background: linear-gradient(140deg, var(--accent-soft), transparent 70%);
+      border: 1px solid var(--accent-line);
+      overflow: hidden;
+      flex: none;
+    }
+    .brand-logo svg { width: 26px; height: 26px; }
+    .brand-title { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: 0.2px; }
+    .brand-sub { margin: 2px 0 0; font-size: 11.5px; color: var(--muted); }
+    .actions { display: flex; align-items: center; gap: 8px; }
+    .icon-btn {
+      width: 40px; height: 40px;
+      display: grid; place-items: center;
+      border-radius: 13px;
+      border: 1px solid var(--line-soft);
+      background: var(--chip-bg);
+      color: var(--ink);
+      cursor: pointer;
+      font: inherit; font-size: 12px; font-weight: 700;
+      transition: border-color 0.18s, transform 0.18s;
+      -webkit-tap-highlight-color: transparent;
+      text-decoration: none;
+    }
+    .icon-btn:hover { border-color: var(--accent-line); transform: translateY(-1px); }
+    .icon-btn svg { width: 18px; height: 18px; }
+    .hidden { display: none !important; }
+
+    .view { animation: rise 0.34s ease; }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+    .panel { padding: 20px; margin-bottom: 16px; }
+
+    .profile-row {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 16px;
+    }
+    .avatar {
+      width: 58px; height: 58px; flex: none;
+      position: relative;
+      display: grid; place-items: center;
+      border-radius: 50%;
+      font-size: 23px; font-weight: 800;
+      color: #fff;
+      background: linear-gradient(140deg, var(--accent-2), var(--violet));
+      box-shadow: 0 8px 22px rgba(111, 141, 255, 0.35);
+    }
+    .avatar .presence {
+      position: absolute;
+      bottom: 1px; inset-inline-start: 1px;
+      width: 15px; height: 15px;
+      border-radius: 50%;
+      background: var(--good);
+      border: 3px solid var(--bg);
+    }
+    .profile-main { min-width: 0; flex: 1; }
+    .username {
+      margin: 0;
+      font-size: 20px; font-weight: 800;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      direction: ltr; text-align: start;
+    }
+    .subline { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 11.5px; font-weight: 700;
+      border: 1px solid var(--line-soft);
+      background: var(--chip-bg);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .chip.status-active { color: var(--good); border-color: var(--good-line); background: var(--good-soft); }
+    .chip.status-warn { color: var(--warn); border-color: var(--warn-line); background: var(--warn-soft); }
+    .chip.status-bad { color: var(--bad); border-color: var(--bad-line); background: var(--bad-soft); }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+
+    .ghost {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 14px;
+      border-radius: var(--r-control);
+      border: 1px solid var(--line-soft);
+      background: var(--chip-bg);
+      color: var(--ink);
+      font: inherit; font-size: 12px; font-weight: 700;
+      cursor: pointer;
+      transition: border-color 0.18s, transform 0.18s;
+    }
+    .ghost:hover { border-color: var(--accent-line); transform: translateY(-1px); }
+    .ghost svg { width: 15px; height: 15px; }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .hero-card {
+      position: relative;
+      overflow: hidden;
+      padding: 18px;
+      border-radius: var(--r-box);
+      border: 1px solid var(--line-soft);
+      background: var(--glass-2);
+      display: flex; flex-direction: column; gap: 6px;
+      min-height: 118px;
+    }
+    .hero-card::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(16rem 9rem at 85% -20%, var(--accent-soft), transparent 70%);
+      pointer-events: none;
+    }
+    .hero-k {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 700; color: var(--muted);
+    }
+    .hero-k .stat-icon { width: 28px; height: 28px; border-radius: 9px; }
+    .hero-clock-time {
+      font-size: clamp(26px, 6vw, 34px);
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      direction: ltr; text-align: start;
+      line-height: 1.15;
+    }
+    .hero-clock-date, .hero-sub { font-size: 12px; color: var(--muted); }
+    .hero-expire-date { font-size: clamp(19px, 4.4vw, 24px); font-weight: 800; line-height: 1.3; }
+    .hero-expire-date.tone-warn { color: var(--warn); }
+    .hero-expire-date.tone-bad { color: var(--bad); }
+
+    .rings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .ring-card {
+      padding: 18px 14px 14px;
+      border-radius: var(--r-box);
+      border: 1px solid var(--line-soft);
+      background: var(--glass-2);
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .ring-title { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 800; color: var(--muted); }
+    .ring-wrap { position: relative; width: min(170px, 58vw); aspect-ratio: 1; }
+    .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .ring-track { fill: none; stroke: var(--ring-track); stroke-width: 10; }
+    .ring-dots { fill: none; stroke: var(--ring-dots); stroke-width: 2.5; stroke-dasharray: 2 7; stroke-linecap: round; opacity: 0.85; }
+    .ring-fill {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-dasharray: 527.8;
+      stroke-dashoffset: 527.8;
+      transition: stroke-dashoffset 0.9s cubic-bezier(0.22, 1, 0.36, 1), stroke 0.3s;
+      filter: drop-shadow(0 0 6px var(--accent-soft));
+    }
+    .ring-card.tone-good .ring-fill { stroke: var(--good); }
+    .ring-card.tone-warn .ring-fill { stroke: var(--warn); }
+    .ring-card.tone-bad .ring-fill { stroke: var(--bad); }
+    .ring-center {
+      position: absolute; inset: 0;
+      display: grid; place-content: center; text-align: center; gap: 2px;
+    }
+    .ring-value { font-size: clamp(26px, 6vw, 34px); font-weight: 800; line-height: 1.1; }
+    .ring-card.tone-good .ring-value { color: var(--good); }
+    .ring-card.tone-warn .ring-value { color: var(--warn); }
+    .ring-card.tone-bad .ring-value { color: var(--bad); }
+    .ring-unit { font-size: 11.5px; color: var(--muted); }
+    .ring-foot {
+      width: 100%;
+      padding-top: 11px;
+      border-top: 1px dashed var(--line-soft);
+      display: flex; justify-content: center;
+      font-size: 12px; color: var(--muted);
+      text-align: center;
+    }
+    .ring-foot b { color: var(--ink); margin: 0 4px; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .metric {
+      padding: 13px 14px;
+      border-radius: var(--r-box);
+      border: 1px solid var(--line-soft);
+      background: var(--glass-2);
+      display: flex; flex-direction: column; gap: 8px;
+      min-width: 0;
+    }
+    .stat-top { display: flex; align-items: center; gap: 8px; }
+    .stat-icon {
+      width: 30px; height: 30px; flex: none;
+      display: grid; place-items: center;
+      border-radius: 10px;
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .stat-icon svg { width: 15px; height: 15px; }
+    .metric .k { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+    .metric .v {
+      font-size: 15px; font-weight: 800;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .section-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 14px;
+    }
+    .title { margin: 0; font-size: 15.5px; font-weight: 800; }
+    .note { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); }
+
+    .list { display: flex; flex-direction: column; gap: 9px; }
+    .config-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      border-radius: var(--r-box);
+      border: 1px solid var(--line-soft);
+      background: var(--glass-2);
+      transition: border-color 0.18s, transform 0.18s;
+    }
+    .config-card:hover { border-color: var(--accent-line); transform: translateY(-1px); }
+    .config-card .flag {
+      width: 40px; height: 40px; flex: none;
+      display: grid; place-items: center;
+      border-radius: 12px;
+      font-size: 21px;
+      border: 1px solid var(--line-soft);
+      background: var(--chip-bg);
+      color: var(--accent);
+    }
+    .item-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .item-title {
+      font-size: 13.5px; font-weight: 800;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      direction: ltr; text-align: start;
+    }
+    .tag {
+      display: inline-block;
+      padding: 2.5px 9px;
+      border-radius: 7px;
+      font-size: 9.8px; font-weight: 800;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      direction: ltr;
+    }
+    .tag.proto { color: var(--violet); background: rgba(192, 139, 255, 0.12); }
+    .row-actions { display: flex; gap: 6px; flex: none; }
+    .row-actions .icon-btn { width: 36px; height: 36px; border-radius: 11px; }
+    .row-actions .icon-btn svg { width: 16px; height: 16px; }
+
+    .empty { display: grid; place-items: center; min-height: 130px; color: var(--faint); font-size: 12.5px; }
+
+    .toast {
+      position: fixed;
+      bottom: 40px;
+      left: 50%; transform: translateX(-50%);
+      width: fit-content;
+      max-width: calc(100% - 40px);
+      padding: 10px 20px;
+      border-radius: 999px;
+      border: 1px solid var(--line-soft);
+      background: var(--modal-surface);
+      color: var(--ink);
+      font-size: 12.5px; font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s;
+      z-index: 70;
+    }
+    .toast.show { opacity: 1; }
+    .toast.success { color: var(--good); border-color: var(--good-line); }
+
+    .mobile-nav {
+      position: fixed;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(400px, calc(100% - 28px));
+      height: var(--nav-height);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+      padding: 8px;
+      border-radius: 26px;
+      border: 1px solid var(--nav-border);
+      background: var(--nav-bg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 40;
+    }
+    .nav-tab {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+      border: none; border-radius: 19px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit; font-size: 10.5px; font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .nav-tab svg { width: 20px; height: 20px; }
+    .nav-tab.active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    @media (min-width: 860px) {
+      :root { --page: 1280px; }
+      .mobile-nav {
+        position: static;
+        transform: none;
+        width: fit-content;
+        height: auto;
+        margin: 22px auto 0;
+        grid-template-columns: repeat(3, auto);
+        gap: 4px;
+        padding: 6px;
+        border-radius: 18px;
+      }
+      .nav-tab {
+        flex-direction: row;
+        gap: 9px;
+        padding: 11px 26px;
+        font-size: 13px;
+        border-radius: 13px;
+      }
+      .page { padding-top: 16px; padding-bottom: 44px; }
+      .list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+    }
+    @media (min-width: 1180px) {
+      .list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 420px) {
+      .hero-grid, .rings-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body data-view="account">
+  <div class="page">
+    <header class="glass">
+      <div class="brand">
+        <span class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="12" cy="12" r="8.5"></circle>
+            <path d="M12 7v5l3 2"></path>
+            <path d="M7 3.5 4.8 5.3M17 3.5l2.2 1.8"></path>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <h1 class="brand-title">PGClock Fusion</h1>
+          <p class="brand-sub" id="brand-subtitle">پنل اشتراک 3x-ui</p>
+        </span>
+      </div>
+      <div class="actions">
+        <button class="icon-btn" id="lang-btn" type="button" aria-label="language"><span id="lang-label">FA</span></button>
+        <button class="icon-btn" id="theme-btn" type="button" aria-label="theme" id="theme-btn">
+          <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 3a6 6 0 1 0 9 7 9 9 0 1 1-9-7Z"></path>
+          </svg>
+        </button>
+        {{ if .support }}
+        <a class="icon-btn" href="{{ .support }}" target="_blank" rel="noopener" aria-label="support">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2Z"></path>
+          </svg>
+        </a>
+        {{ end }}
+      </div>
+    </header>
+
+    {{ if .announce }}
+    <div style="margin-bottom: 12px; padding: 11px 16px; border-radius: 17px; font-size: 12.5px; text-align: center; line-height: 1.8; border: 1px solid var(--warn-line); background: var(--warn-soft); color: var(--warn);">
+      {{ .announce }}
+      {{ if .announceURL }} <a href="{{ .announceURL }}" target="_blank" rel="noopener" style="color: inherit; font-weight: 700;">لینک</a>{{ end }}
+    </div>
+    {{ end }}
+
+    <main>
+      <section class="view" id="view-account">
+        <div>
+          <section class="panel glass">
+            <div class="profile-row">
+              <span class="avatar"><span id="avatar-letter">?</span><span class="presence"></span></span>
+              <span class="profile-main">
+                <h2 class="username" id="username">-</h2>
+                <p class="subline" id="subline">-</p>
+              </span>
+              <span class="chip status-active"><span class="dot"></span><span id="status-label">فعال</span></span>
+            </div>
+
+            <div class="hero-grid">
+              <article class="hero-card">
+                <span class="hero-k">
+                  <span class="stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="8.5"></circle>
+                      <path d="M12 7.5v4.5l3 2"></path>
+                    </svg>
+                  </span>
+                  <span id="now-label">ساعت اکنون</span>
+                </span>
+                <span class="hero-clock-time" id="clock-time">--:--:--</span>
+                <span class="hero-clock-date"><span id="clock-weekday">-</span> · <span id="clock-date">-</span></span>
+              </article>
+              <article class="hero-card">
+                <span class="hero-k">
+                  <span class="stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path>
+                    </svg>
+                  </span>
+                  <span id="expire-label">تاریخ انقضا</span>
+                </span>
+                <span class="hero-expire-date" id="expire-date">-</span>
+                <span class="hero-sub" id="expire-hint">-</span>
+              </article>
+            </div>
+
+            <div class="rings-grid">
+              <article class="ring-card" id="ring-days-card">
+                <span class="ring-title">
+                  <span class="stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path>
+                    </svg>
+                  </span>
+                  <span id="days-left-title">روز باقی‌مانده</span>
+                </span>
+                <div class="ring-wrap">
+                  <svg viewBox="0 0 200 200" aria-hidden="true">
+                    <circle class="ring-dots" cx="100" cy="100" r="95"></circle>
+                    <circle class="ring-track" cx="100" cy="100" r="84"></circle>
+                    <circle class="ring-fill" id="ring-days" cx="100" cy="100" r="84"></circle>
+                  </svg>
+                  <span class="ring-center">
+                    <span class="ring-value" id="ring-days-value">-</span>
+                    <span class="ring-unit" id="ring-days-unit">روز</span>
+                  </span>
+                </div>
+                <span class="ring-foot" id="ring-days-foot">تا پایان اشتراک</span>
+              </article>
+              <article class="ring-card" id="ring-data-card">
+                <span class="ring-title">
+                  <span class="stat-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <path d="M6 20V9M12 20V4M18 20v-7"></path>
+                    </svg>
+                  </span>
+                  <span id="data-left-title">حجم باقی‌مانده</span>
+                </span>
+                <div class="ring-wrap">
+                  <svg viewBox="0 0 200 200" aria-hidden="true">
+                    <circle class="ring-dots" cx="100" cy="100" r="95"></circle>
+                    <circle class="ring-track" cx="100" cy="100" r="84"></circle>
+                    <circle class="ring-fill" id="ring-data" cx="100" cy="100" r="84"></circle>
+                  </svg>
+                  <span class="ring-center">
+                    <span class="ring-value" id="ring-data-value">-</span>
+                    <span class="ring-unit" id="ring-data-unit">باقی‌مانده</span>
+                  </span>
+                </div>
+                <span class="ring-foot" id="ring-data-foot">-</span>
+              </article>
+            </div>
+
+            <div class="chip-row" id="profile-chips"></div>
+            <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+              <button class="ghost" type="button" id="copy-sub-link">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <rect x="9" y="9" width="13" height="13" rx="3"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span id="copy-sub-label">کپی لینک اشتراک</span>
+              </button>
+              <button class="ghost" type="button" id="qr-sub-link">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+                  <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z"></path>
+                </svg>
+                <span id="qr-sub-label">QR اشتراک</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="panel glass">
+            <div class="section-head">
+              <div><h2 class="title" id="details-title">جزئیات حساب</h2></div>
+            </div>
+            <div class="metrics" id="metrics"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-configs" style="display: none;">
+        <section class="panel glass">
+          <div class="section-head">
+            <div>
+              <h2 class="title" id="configs-title">لیست سرورها</h2>
+              <p class="note" id="configs-note">لینک اشتراک و کانفیگ‌های کاربر</p>
+            </div>
+            <button class="ghost" id="copy-all" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <rect x="9" y="9" width="13" height="13" rx="3"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span id="copy-all-label">کپی همه</span>
+            </button>
+          </div>
+          <div class="list" id="config-list"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobile-nav" aria-label="sections">
+    <button class="nav-tab active" type="button" data-view="account">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M20 21a8 8 0 1 0-16 0"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      <span id="nav-account">اطلاعات حساب</span>
+    </button>
+    <button class="nav-tab" type="button" data-view="configs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="3" y="4" width="18" height="7" rx="2"></rect>
+        <rect x="3" y="13" width="18" height="7" rx="2"></rect>
+      </svg>
+      <span id="nav-configs">سرورها</span>
+    </button>
+    <button class="nav-tab" type="button" id="nav-apps-tab" style="display: none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="4" y="4" width="6" height="6" rx="2"></rect>
+        <rect x="14" y="4" width="6" height="6" rx="2"></rect>
+        <rect x="4" y="14" width="6" height="6" rx="2"></rect>
+        <rect x="14" y="14" width="6" height="6" rx="2"></rect>
+      </svg>
+      <span id="nav-apps">اپلیکیشن‌ها</span>
+    </button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    // ===== 3x-ui injected data =====
+    const USER_DATA = {
+      username: "{{ .user.username }}",
+      totalGB: {{ .user.totalGB }},
+      usedTraffic: {{ .user.usedTraffic }},
+      exp: {{ .user.exp }},
+      status: "{{ .user.status }}",
+      subId: "{{ .user.subId }}"
+    };
+
+    const SUB_URL = "{{ .subURL }}";
+
+    // Configs array from 3x-ui
+    const CONFIGS = [
+      {{ range .configs }}
+      { 
+        name: {{ .name | printf "%q" | safeJS }},
+        protocol: {{ .protocol | printf "%q" | safeJS }},
+        link: {{ .link | printf "%q" | safeJS }}
+      },
+      {{ end }}
+    ];
+
+    // ===== i18n =====
+    const L = {
+      fa: {
+        navAccount: "اطلاعات حساب", navConfigs: "سرورها", navApps: "اپلیکیشن‌ها",
+        nowLabel: "ساعت اکنون", expireDate: "تاریخ انقضا",
+        daysLeftTitle: "روز باقی‌مانده", dataLeftTitle: "حجم باقی‌مانده",
+        untilEnd: "تا پایان اشتراک", remainWord: "باقی‌مانده",
+        days: "روز",
+        detailsTitle: "جزئیات حساب",
+        configsTitle: "لیست سرورها", configsNote: "لینک اشتراک و کانفیگ‌های کاربر",
+        copyAll: "کپی همه",
+        copySubLink: "کپی لینک اشتراک", qrSubLink: "QR اشتراک",
+        copy: "کپی", copied: "کپی شد",
+        active: "فعال", disabled: "غیرفعال", limited: "محدود", expired: "منقضی",
+        expire: "زمان باقی‌مانده", used: "مصرف", remain: "حجم باقی‌مانده", limit: "حجم کل",
+        online: "آخرین اتصال", lifetime: "مصرف کل",
+        unlimited: "نامحدود", never: "هرگز",
+        bytes: "بایت", kb: "کیلوبایت", mb: "مگابایت", gb: "گیگابایت", tb: "ترابایت",
+        lowTraffic: "حجم اشتراک رو به پایان است", lowTime: "زمان اشتراک رو به پایان است",
+        noConfig: "کانفیگی برای نمایش نیست",
+        subLink: "لینک اشتراک",
+        invalid: "لینک یا توکن معتبر نیست", infoError: "دریافت اطلاعات حساب خطا داد",
+        qrLoading: "در حال ساخت QR", qrError: "ساخت QR خطا داد",
+        daysLeft: "روز دیگر", timeLeft: "روز دیگر",
+        statusActive: "فعال"
+      },
+      en: {
+        navAccount: "Account", navConfigs: "Servers", navApps: "Apps",
+        nowLabel: "Current time", expireDate: "Expiry date",
+        daysLeftTitle: "Days remaining", dataLeftTitle: "Data remaining",
+        untilEnd: "until subscription ends", remainWord: "remaining",
+        days: "days",
+        detailsTitle: "Account details",
+        configsTitle: "Server list", configsNote: "User subscription link and configs",
+        copyAll: "Copy all",
+        copySubLink: "Copy subscription link", qrSubLink: "Subscription QR",
+        copy: "Copy", copied: "Copied",
+        active: "Active", disabled: "Disabled", limited: "Limited", expired: "Expired",
+        expire: "Time left", used: "Used", remain: "Remaining data", limit: "Limit",
+        online: "Last online", lifetime: "Lifetime",
+        unlimited: "Unlimited", never: "Never",
+        bytes: "B", kb: "KB", mb: "MB", gb: "GB", tb: "TB",
+        lowTraffic: "Your remaining traffic is low", lowTime: "Your subscription expires soon",
+        noConfig: "No configs to show",
+        subLink: "Subscription link",
+        invalid: "Invalid link or token", infoError: "Could not load account info",
+        qrLoading: "Creating QR", qrError: "Could not create QR",
+        daysLeft: "days left", timeLeft: "days left",
+        statusActive: "Active"
+      }
+    };
+
+    let lang = localStorage.getItem("pgclock_lang") || "fa";
+    let theme = localStorage.getItem("pgclock_theme") || "dark";
+
+    function $(id) { return document.getElementById(id); }
+    function tr(key) { return (L[lang] && L[lang][key]) || L.fa[key] || key; }
+    function isFa() { return lang === "fa"; }
+    function num(value) {
+      var s = String(value == null ? "" : value);
+      return isFa() ? s.replace(/\d/g, function (d) { return "۰۱۲۳۴۵۶۷۸۹"[d]; }) : s;
+    }
+    function esc(value) {
+      return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function bytes(value) {
+      value = Number(value);
+      if (!isFinite(value)) return "-";
+      if (value === 0) return num(0) + " " + tr("bytes");
+      var units = [tr("bytes"), tr("kb"), tr("mb"), tr("gb"), tr("tb")];
+      var index = Math.min(units.length - 1, Math.floor(Math.log(Math.max(value, 1)) / Math.log(1024)));
+      var out = (value / Math.pow(1024, index)).toFixed(index > 1 ? 1 : 0).replace(/\.0$/, "");
+      return num(out) + " " + units[index];
+    }
+
+    function toast(message, tone) {
+      $("toast").textContent = message;
+      $("toast").classList.toggle("success", tone === "success");
+      $("toast").classList.add("show");
+      setTimeout(function () { $("toast").classList.remove("show", "success"); }, 1600);
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(String(text || "")).then(function() {
+          toast(tr("copied"), "success");
+        });
+      }
+      var ta = document.createElement("textarea");
+      ta.value = String(text || "");
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      toast(tr("copied"), "success");
+    }
+
+    // ===== Language =====
+    function applyLang() {
+      document.documentElement.lang = lang;
+      document.documentElement.dir = isFa() ? "rtl" : "ltr";
+      $("lang-label").textContent = isFa() ? "FA" : "EN";
+
+      $("now-label").textContent = tr("nowLabel");
+      $("expire-label").textContent = tr("expireDate");
+      $("days-left-title").textContent = tr("daysLeftTitle");
+      $("data-left-title").textContent = tr("dataLeftTitle");
+      $("ring-days-foot").textContent = tr("untilEnd");
+      $("ring-days-unit").textContent = tr("days");
+      $("ring-data-unit").textContent = tr("remainWord");
+      $("details-title").textContent = tr("detailsTitle");
+      $("configs-title").textContent = tr("configsTitle");
+      $("configs-note").textContent = tr("configsNote");
+      $("copy-all-label").textContent = tr("copyAll");
+      $("copy-sub-label").textContent = tr("copySubLink");
+      $("qr-sub-label").textContent = tr("qrSubLink");
+      $("nav-account").textContent = tr("navAccount");
+      $("nav-configs").textContent = tr("navConfigs");
+      $("nav-apps").textContent = tr("navApps");
+      $("brand-subtitle").textContent = isFa() ? "پنل اشتراک 3x-ui" : "3x-ui Subscription";
+    }
+
+    // ===== Theme =====
+    function applyTheme() {
+      document.documentElement.setAttribute("data-theme", theme);
+      var icon = $("theme-icon");
+      if (theme === "dark") {
+        icon.innerHTML = '<path d="M12 3a6 6 0 1 0 9 7 9 9 0 1 1-9-7Z"></path>';
+      } else {
+        icon.innerHTML = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>';
+      }
+    }
+
+    // ===== Clock =====
+    function tickClock() {
+      var now = new Date();
+      var timeText;
+      try {
+        timeText = new Intl.DateTimeFormat(isFa() ? "fa-IR-u-nu-arabext" : "en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(now);
+      } catch (e) {
+        timeText = num(("0" + now.getHours()).slice(-2) + ":" + ("0" + now.getMinutes()).slice(-2) + ":" + ("0" + now.getSeconds()).slice(-2));
+      }
+      $("clock-time").textContent = timeText;
+      try {
+        $("clock-weekday").textContent = new Intl.DateTimeFormat(isFa() ? "fa-IR" : "en-US", { weekday: "long" }).format(now);
+        $("clock-date").textContent = new Intl.DateTimeFormat(isFa() ? "fa-IR-u-nu-arabext" : "en-US", { year: "numeric", month: "long", day: "numeric" }).format(now);
+      } catch (e) {
+        $("clock-weekday").textContent = "";
+        $("clock-date").textContent = now.toLocaleDateString();
+      }
+    }
+
+    // ===== Rings =====
+    const RING_C = 2 * Math.PI * 84;
+
+    function setRing(fillEl, cardEl, pct, tone) {
+      pct = Math.max(0, Math.min(1, Number(pct) || 0));
+      fillEl.style.strokeDasharray = RING_C;
+      fillEl.style.strokeDashoffset = RING_C * (1 - pct);
+      cardEl.classList.remove("tone-good", "tone-warn", "tone-bad");
+      if (tone) cardEl.classList.add("tone-" + tone);
+    }
+
+    function daysLeftNum(value) {
+      if (!value) return null;
+      return Math.ceil((value - Date.now()) / 86400000);
+    }
+
+    function renderRings() {
+      var used = Number(USER_DATA.usedTraffic || 0);
+      var limit = Number(USER_DATA.totalGB || 0);
+      var expire = USER_DATA.exp;
+
+      // Days ring
+      var days = expire ? daysLeftNum(expire) : null;
+      var daysPct = 1, daysTone = "good";
+      if (expire && days != null) {
+        var total = 30;
+        daysPct = Math.max(0, days) / total;
+        daysTone = days <= 0 ? "bad" : (days <= 7 ? "warn" : "good");
+        $("ring-days-value").textContent = days <= 0 ? tr("expired") : num(Math.max(0, days));
+        $("ring-days-unit").textContent = days <= 0 ? "" : tr("days");
+        $("ring-days-foot").textContent = tr("untilEnd");
+      } else {
+        $("ring-days-value").textContent = "∞";
+        $("ring-days-unit").textContent = tr("unlimited");
+        $("ring-days-foot").textContent = tr("untilEnd");
+        daysTone = "";
+      }
+      setRing($("ring-days"), $("ring-days-card"), daysPct, daysTone);
+
+      // Data ring
+      var dataPct = 1, dataTone = "good";
+      if (limit > 0) {
+        var remain = Math.max(0, limit - used);
+        dataPct = remain / limit;
+        dataTone = dataPct <= 0.02 ? "bad" : (dataPct <= 0.15 ? "warn" : "good");
+        $("ring-data-value").textContent = num(Math.round(dataPct * 100)) + "%";
+        $("ring-data-unit").textContent = tr("remainWord");
+        $("ring-data-foot").innerHTML = tr("remainWord") + ": <b>" + esc(bytes(remain)) + "</b> " + tr("ofWord") + " <b>" + esc(bytes(limit)) + "</b>";
+      } else {
+        $("ring-data-value").textContent = "∞";
+        $("ring-data-unit").textContent = tr("unlimited");
+        $("ring-data-foot").innerHTML = tr("used") + ": <b>" + esc(bytes(used)) + "</b>";
+        dataTone = "";
+      }
+      setRing($("ring-data"), $("ring-data-card"), dataPct, dataTone);
+    }
+
+    function expireHero() {
+      var expire = USER_DATA.exp;
+      var el = $("expire-date");
+      el.classList.remove("tone-warn", "tone-bad");
+      if (!expire) {
+        el.textContent = tr("unlimited");
+        $("expire-hint").textContent = "";
+        return;
+      }
+      var d = new Date(expire);
+      el.textContent = isFa() ? d.toLocaleDateString("fa-IR") : d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+      var days = daysLeftNum(expire);
+      if (days != null) {
+        if (days <= 0) { el.classList.add("tone-bad"); $("expire-hint").textContent = tr("expired"); }
+        else {
+          if (days <= 7) el.classList.add("tone-warn");
+          $("expire-hint").textContent = num(days) + " " + tr("days") + (isFa() ? " دیگر" : " " + "left");
+        }
+      } else $("expire-hint").textContent = "";
+    }
+
+    // ===== Account =====
+    function renderAccount() {
+      var username = USER_DATA.username || "-";
+      var status = String(USER_DATA.status || "active").toLowerCase();
+      var used = Number(USER_DATA.usedTraffic || 0);
+      var limit = Number(USER_DATA.totalGB || 0);
+      var remain = limit > 0 ? Math.max(0, limit - used) : Infinity;
+
+      $("avatar-letter").textContent = username !== "-" ? String(username).charAt(0).toUpperCase() : "?";
+      $("username").textContent = username;
+      $("subline").textContent = "Sub ID: " + USER_DATA.subId;
+
+      var statusText = tr(status) || status;
+      var statusClass = status === "active" || status === "true" ? "status-active" : (status === "limited" || status === "expired" ? "status-bad" : "status-warn");
+      $("status-label").parentElement.className = "chip " + statusClass;
+      $("status-label").textContent = statusText;
+
+      expireHero();
+      renderRings();
+
+      $("metrics").innerHTML = [
+        '<article class="metric"><div class="stat-top"><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"></path></svg></span><span class="k">' + esc(tr("expire")) + '</span></div><span class="v">' + esc(daysLeftNum(USER_DATA.exp) != null ? num(daysLeftNum(USER_DATA.exp)) + " " + tr("days") : tr("unlimited")) + '</span></article>',
+        '<article class="metric"><div class="stat-top"><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 7 13.5 15.5 8.5 10.5 2 17"></path><path d="M16 7h6v6"></path></svg></span><span class="k">' + esc(tr("used")) + '</span></div><span class="v">' + esc(bytes(used)) + '</span></article>',
+        '<article class="metric"><div class="stat-top"><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22a8 8 0 0 0 8-8c0-4-4-8-8-12-4 4-8 8-8 8a8 8 0 0 0 8 8Z"></path></svg></span><span class="k">' + esc(tr("remain")) + '</span></div><span class="v">' + esc(limit > 0 ? bytes(remain) : "∞") + '</span></article>',
+        '<article class="metric"><div class="stat-top"><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"></path><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"></path></svg></span><span class="k">' + esc(tr("limit")) + '</span></div><span class="v">' + esc(limit > 0 ? bytes(limit) : "∞") + '</span></article>'
+      ].join("");
+    }
+
+    // ===== Configs =====
+    function linkType(raw) {
+      raw = String(raw || "").toLowerCase();
+      if (raw.indexOf("vless://") === 0) return "VLESS";
+      if (raw.indexOf("vmess://") === 0) return "VMess";
+      if (raw.indexOf("trojan://") === 0) return "Trojan";
+      if (raw.indexOf("wireguard://") === 0) return "WireGuard";
+      if (raw.indexOf("hysteria2://") === 0) return "Hysteria2";
+      if (raw.indexOf("hysteria") === 0) return "Hysteria";
+      if (raw.indexOf("ss://") === 0) return "Shadowsocks";
+      return "Proxy";
+    }
+
+    function renderConfigs() {
+      if (!CONFIGS || !CONFIGS.length) {
+        $("config-list").innerHTML = '<div class="empty">' + esc(tr("noConfig")) + '</div>';
+        return;
+      }
+      $("config-list").innerHTML = CONFIGS.map(function (c, index) {
+        return '<article class="config-card" data-index="' + index + '">' +
+          '<span class="flag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3c2.3 2.5 3.5 5.5 3.5 9S14.3 18.5 12 21"></path></svg></span>' +
+          '<span class="item-main"><span class="item-title">' + esc(c.name || linkType(c.link) + " " + num(index + 1)) + '</span><span class="tag proto">' + esc(c.protocol || linkType(c.link)) + '</span></span>' +
+          '<span class="row-actions">' +
+          '<button class="icon-btn" type="button" data-action="copy" aria-label="copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="3"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>' +
+          '</span></article>';
+      }).join("");
+    }
+
+    // ===== Events =====
+    function bindEvents() {
+      $("copy-sub-link").addEventListener("click", function () { copyText(SUB_URL); });
+      $("qr-sub-link").addEventListener("click", function () { toast(tr("qrLoading")); /* placeholder */ });
+      $("copy-all").addEventListener("click", function () {
+        copyText(CONFIGS.map(function (c) { return c.link; }).join("\n") || SUB_URL);
+      });
+      $("config-list").addEventListener("click", function (event) {
+        var btn = event.target.closest("[data-action]");
+        if (!btn) return;
+        var card = btn.closest(".config-card");
+        if (!card) return;
+        var idx = Number(card.getAttribute("data-index"));
+        if (CONFIGS[idx]) copyText(CONFIGS[idx].link);
+      });
+
+      $("lang-btn").addEventListener("click", function () {
+        lang = lang === "fa" ? "en" : "fa";
+        localStorage.setItem("pgclock_lang", lang);
+        applyLang();
+        renderAccount();
+        renderConfigs();
+      });
+
+      $("theme-btn").addEventListener("click", function () {
+        theme = theme === "dark" ? "light" : "dark";
+        localStorage.setItem("pgclock_theme", theme);
+        applyTheme();
+      });
+
+      document.querySelectorAll("[data-view]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var view = btn.getAttribute("data-view");
+          document.querySelectorAll(".view").forEach(function (v) { v.style.display = "none"; });
+          $("view-" + view).style.display = "block";
+          document.querySelectorAll(".nav-tab").forEach(function (t) { t.classList.remove("active"); });
+          btn.classList.add("active");
+        });
+      });
+    }
+
+    // ===== Init =====
+    applyLang();
+    applyTheme();
+    bindEvents();
+    tickClock();
+    setInterval(tickClock, 1000);
+    renderAccount();
+    renderConfigs();
+  })();
+  </script>
+</body>
+</html>
