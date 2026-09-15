@@ -34,113 +34,205 @@ install_dependencies() {
 
 # ========== STEP 2: Auto-Detect 3x-ui Settings ==========
 detect_xui_settings() {
-    echo -e "\n${YELLOW}[2/6] Auto-detecting 3x-ui settings...${NC}"
+    echo -e "\n${YELLOW}[2/6] Auto-detecting 3x-ui settings from database...${NC}"
     
-    XUI_PORT="2053"
-    XUI_PATH=""
-    XUI_USER="admin"
-    XUI_PASS="admin"
-    XUI_HOST=$(curl -sS ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
-    XUI_PROTOCOL="https"
-    CERT_PUBLIC=""
-    CERT_PRIVATE=""
+    # Default values
+    WEB_PORT="2053"
+    WEB_BASE_PATH=""
+    WEB_DOMAIN=$(curl -sS ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+    WEB_CERT=""
+    WEB_KEY=""
     
-    XUI_BIN=""
+    # Subscription settings (what we actually need!)
+    SUB_PORT=""
+    SUB_PATH="/sub/"
+    SUB_LISTEN=""
+    SUB_DOMAIN=""
+    SUB_CERT=""
+    SUB_KEY=""
+    
+    # Credentials
+    PANEL_USER=""
+    PANEL_PASS=""
+    
+    # Find 3x-ui database
     XUI_DB=""
-    XUI_CONFIG=""
-    
-    for path in "/usr/local/x-ui" "/opt/x-ui" "/usr/bin/x-ui" "/root/x-ui"; do
-        if [ -d "$path" ]; then
-            XUI_BIN="$path"
+    for db_path in "/etc/x-ui/x-ui.db" "/usr/local/x-ui/bin/x-ui.db" "/usr/local/x-ui/x-ui.db" "/opt/x-ui/bin/x-ui.db" "/opt/x-ui/x-ui.db" "/root/x-ui/x-ui.db"; do
+        if [ -f "$db_path" ]; then
+            XUI_DB="$db_path"
+            echo -e "  ${BLUE}→ Found database: $XUI_DB${NC}"
             break
         fi
     done
     
-    if [ -n "$XUI_BIN" ]; then
-        XUI_DB=$(find "$XUI_BIN" -name "*.db" 2>/dev/null | head -1)
-        XUI_CONFIG=$(find "$XUI_BIN" -name "config.json" 2>/dev/null | head -1)
+    # Fallback search
+    if [ -z "$XUI_DB" ]; then
+        XUI_DB=$(find /etc /usr/local /opt /root -name "x-ui.db" -o -name "xui.db" 2>/dev/null | head -1)
+        if [ -n "$XUI_DB" ]; then
+            echo -e "  ${BLUE}→ Found database (search): $XUI_DB${NC}"
+        fi
     fi
     
     if [ -z "$XUI_DB" ]; then
-        XUI_DB=$(find /etc /usr/local /opt -name "x-ui.db" -o -name "xui.db" 2>/dev/null | head -1)
-    fi
-    if [ -z "$XUI_CONFIG" ]; then
-        XUI_CONFIG=$(find /etc /usr/local /opt -name "config.json" -path "*x-ui*" 2>/dev/null | head -1)
-    fi
-    
-    if [ -n "$XUI_CONFIG" ] && [ -f "$XUI_CONFIG" ]; then
-        echo -e "  ${BLUE}→ Found config: $XUI_CONFIG${NC}"
-        local conf_port=$(jq -r '.panelPort // .listen_port // empty' "$XUI_CONFIG" 2>/dev/null)
-        local conf_path=$(jq -r '.basePath // .base_path // empty' "$XUI_CONFIG" 2>/dev/null)
-        [ -n "$conf_port" ] && XUI_PORT="$conf_port"
-        [ -n "$conf_path" ] && XUI_PATH="$conf_path"
+        echo -e "  ${RED}✗ 3x-ui database not found!${NC}"
+        echo -e "  ${YELLOW}Please make sure 3x-ui is installed first.${NC}"
+        exit 1
     fi
     
-    if [ -n "$XUI_DB" ] && [ -f "$XUI_DB" ]; then
-        echo -e "  ${BLUE}→ Found database: $XUI_DB${NC}"
-        
-        local db_port=$(sqlite3 "$XUI_DB" "SELECT value FROM settings WHERE key='panelPort' OR key='listen_port' LIMIT 1;" 2>/dev/null)
-        local db_path=$(sqlite3 "$XUI_DB" "SELECT value FROM settings WHERE key='basePath' OR key='base_path' OR key='webBasePath' LIMIT 1;" 2>/dev/null)
-        local db_user=$(sqlite3 "$XUI_DB" "SELECT value FROM settings WHERE key='username' OR key='loginUsername' LIMIT 1;" 2>/dev/null)
-        local db_pass=$(sqlite3 "$XUI_DB" "SELECT value FROM settings WHERE key='password' OR key='loginPassword' LIMIT 1;" 2>/dev/null)
-        
-        [ -n "$db_port" ] && XUI_PORT="$db_port"
-        [ -n "$db_path" ] && XUI_PATH="$db_path"
-        [ -n "$db_user" ] && XUI_USER="$db_user"
-        [ -n "$db_pass" ] && XUI_PASS="$db_pass"
+    # ============================================
+    # READ ALL SETTINGS FROM DATABASE
+    # ============================================
+    echo -e "  ${BLUE}→ Reading settings from database...${NC}"
+    
+    # Helper function to read a setting
+    read_setting() {
+        sqlite3 "$XUI_DB" "SELECT value FROM settings WHERE key='$1' LIMIT 1;" 2>/dev/null
+    }
+    
+    # Read panel settings
+    local db_web_port=$(read_setting "webPort")
+    local db_web_base_path=$(read_setting "webBasePath")
+    local db_web_domain=$(read_setting "webDomain")
+    local db_web_cert=$(read_setting "webCertFile")
+    local db_web_key=$(read_setting "webKeyFile")
+    
+    [ -n "$db_web_port" ] && WEB_PORT="$db_web_port"
+    [ -n "$db_web_base_path" ] && WEB_BASE_PATH="$db_web_base_path"
+    [ -n "$db_web_domain" ] && WEB_DOMAIN="$db_web_domain"
+    [ -n "$db_web_cert" ] && WEB_CERT="$db_web_cert"
+    [ -n "$db_web_key" ] && WEB_KEY="$db_web_key"
+    
+    # ============================================
+    # READ SUBSCRIPTION SETTINGS (THE KEY PART!)
+    # ============================================
+    local db_sub_port=$(read_setting "subPort")
+    local db_sub_path=$(read_setting "subPath")
+    local db_sub_listen=$(read_setting "subListen")
+    local db_sub_domain=$(read_setting "subDomain")
+    local db_sub_cert=$(read_setting "subCertFile")
+    local db_sub_key=$(read_setting "subKeyFile")
+    
+    [ -n "$db_sub_port" ] && SUB_PORT="$db_sub_port"
+    [ -n "$db_sub_path" ] && SUB_PATH="$db_sub_path"
+    [ -n "$db_sub_listen" ] && SUB_LISTEN="$db_sub_listen"
+    [ -n "$db_sub_domain" ] && SUB_DOMAIN="$db_sub_domain"
+    [ -n "$db_sub_cert" ] && SUB_CERT="$db_sub_cert"
+    [ -n "$db_sub_key" ] && SUB_KEY="$db_sub_key"
+    
+    # Read credentials from users table
+    PANEL_USER=$(sqlite3 "$XUI_DB" "SELECT username FROM users ORDER BY id LIMIT 1;" 2>/dev/null)
+    # Note: password is hashed, we'll need user to confirm or provide it
+    
+    # Determine effective values
+    if [ -z "$SUB_PORT" ]; then
+        # If subscription port is not set, 3x-ui uses webPort
+        SUB_PORT="$WEB_PORT"
+        echo -e "  ${YELLOW}⚠ subPort not set in database, using webPort: $SUB_PORT${NC}"
     fi
     
-    for cert_dir in "/root/cert" "/etc/letsencrypt/live" "/usr/local/x-ui/bin/cert" "/opt/x-ui/cert"; do
-        if [ -d "$cert_dir" ]; then
-            local domain_dir=$(find "$cert_dir" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | head -1)
-            if [ -n "$domain_dir" ]; then
-                if [ -f "$domain_dir/fullchain.pem" ] && [ -f "$domain_dir/privkey.pem" ]; then
-                    CERT_PUBLIC="$domain_dir/fullchain.pem"
-                    CERT_PRIVATE="$domain_dir/privkey.pem"
-                    echo -e "  ${GREEN}✓ SSL certificates found: $domain_dir${NC}"
-                    break
-                fi
-            fi
+    # Determine domain for subscription
+    if [ -z "$SUB_DOMAIN" ]; then
+        if [ -n "$WEB_DOMAIN" ]; then
+            SUB_DOMAIN="$WEB_DOMAIN"
         fi
-    done
-    
-    [ -n "$CERT_PUBLIC" ] && XUI_PROTOCOL="https" || XUI_PROTOCOL="http"
-    
-    if [ "$XUI_PROTOCOL" = "https" ] && [ "$XUI_PORT" = "443" ]; then
-        SUB_BASE="https://$XUI_HOST"
-    elif [ "$XUI_PROTOCOL" = "http" ] && [ "$XUI_PORT" = "80" ]; then
-        SUB_BASE="http://$XUI_HOST"
-    else
-        SUB_BASE="$XUI_PROTOCOL://$XUI_HOST:$XUI_PORT"
     fi
     
-    XUI_PATH=$(echo "$XUI_PATH" | sed 's|^/||;s|/$||')
+    # Clean paths
+    WEB_BASE_PATH=$(echo "$WEB_BASE_PATH" | sed 's|^/||;s|/$||')
+    SUB_PATH=$(echo "$SUB_PATH" | sed 's|^/||;s|/$||')
     
-    echo -e "\n${GREEN}✓ Detected 3x-ui Settings:${NC}"
-    echo -e "  ${BLUE}Host:${NC}     $XUI_HOST"
-    echo -e "  ${BLUE}Port:${NC}     $XUI_PORT"
-    echo -e "  ${BLUE}Path:${NC}     ${XUI_PATH:-/ (root)}"
-    echo -e "  ${BLUE}Protocol:${NC} $XUI_PROTOCOL"
-    echo -e "  ${BLUE}SSL:${NC}      $([ -n "$CERT_PUBLIC" ] && echo "✓ Available" || echo "✗ Not found")"
+    # Determine protocol based on SSL certificates
+    SUB_PROTOCOL="http"
+    if [ -n "$SUB_CERT" ] && [ -f "$SUB_CERT" ] && [ -n "$SUB_KEY" ] && [ -f "$SUB_KEY" ]; then
+        SUB_PROTOCOL="https"
+    fi
     
-    read -p "$(echo -e ${YELLOW}'[?] Are these settings correct? (Y/n): '${NC})" confirm
+    # Build subscription base URL
+    if [ "$SUB_PROTOCOL" = "https" ]; then
+        if [ "$SUB_PORT" = "443" ]; then
+            SUB_BASE="https://$SUB_DOMAIN"
+        else
+            SUB_BASE="https://$SUB_DOMAIN:$SUB_PORT"
+        fi
+    else
+        if [ "$SUB_PORT" = "80" ]; then
+            SUB_BASE="http://$SUB_DOMAIN"
+        else
+            SUB_BASE="http://$SUB_DOMAIN:$SUB_PORT"
+        fi
+    fi
+    
+    # Display detected settings
+    echo -e "\n${GREEN}✓ Detected 3x-ui Settings from Database:${NC}"
+    echo -e "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "  ${BLUE}Panel Settings:${NC}"
+    echo -e "    Web Port:      ${GREEN}$WEB_PORT${NC}"
+    echo -e "    Web Base Path: ${GREEN}${WEB_BASE_PATH:-/ (root)}${NC}"
+    echo -e "    Web Domain:    ${GREEN}$WEB_DOMAIN${NC}"
+    echo -e "    Panel SSL:     $([ -n "$WEB_CERT" ] && [ -f "$WEB_CERT" ] && echo "${GREEN}✓ $WEB_CERT${NC}" || echo "${YELLOW}✗ Not configured${NC}")"
+    echo -e ""
+    echo -e "  ${BLUE}Subscription Settings:${NC}"
+    echo -e "    Sub Port:      ${GREEN}$SUB_PORT${NC} ${YELLOW}← from 'subPort' in DB${NC}"
+    echo -e "    Sub Path:      ${GREEN}$SUB_PATH${NC} ${YELLOW}← from 'subPath' in DB${NC}"
+    echo -e "    Sub Domain:    ${GREEN}$SUB_DOMAIN${NC} ${YELLOW}← from 'subDomain' in DB${NC}"
+    echo -e "    Sub SSL:       $([ -n "$SUB_CERT" ] && [ -f "$SUB_CERT" ] && echo "${GREEN}✓ $SUB_CERT${NC}" || echo "${YELLOW}✗ Not configured${NC}")"
+    echo -e "    Sub Protocol:  ${GREEN}$SUB_PROTOCOL${NC}"
+    echo -e ""
+    echo -e "  ${BLUE}Credentials:${NC}"
+    echo -e "    Username:      ${GREEN}$PANEL_USER${NC}"
+    echo -e "    Password:      ${YELLOW}[stored as hash in DB]${NC}"
+    echo -e "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    
+    # Ask user to confirm or edit
+    echo -e "\n${YELLOW}[?] Subscription URL will be: ${GREEN}$SUB_BASE/$SUB_PATH/{user.subId}${NC}"
+    read -p "$(echo -e ${YELLOW}'[?] Is this correct? (Y/n/edit): '${NC})" confirm
     confirm=${confirm:-Y}
+    
     if [[ "$confirm" =~ ^[Nn] ]]; then
-        read -p "  Host [$XUI_HOST]: " input_host
-        [ -n "$input_host" ] && XUI_HOST="$input_host"
+        read -p "  Sub Port [$SUB_PORT]: " input
+        [ -n "$input" ] && SUB_PORT="$input"
         
-        read -p "  Port [$XUI_PORT]: " input_port
-        [ -n "$input_port" ] && XUI_PORT="$input_port"
+        read -p "  Sub Path [$SUB_PATH]: " input
+        [ -n "$input" ] && SUB_PATH="$input"
         
-        read -p "  Path [$XUI_PATH]: " input_path
-        [ -n "$input_path" ] && XUI_PATH="$input_path"
+        read -p "  Sub Domain [$SUB_DOMAIN]: " input
+        [ -n "$input" ] && SUB_DOMAIN="$input"
         
-        read -p "  Username [$XUI_USER]: " input_user
-        [ -n "$input_user" ] && XUI_USER="$input_user"
+        read -p "  Panel Username [$PANEL_USER]: " input
+        [ -n "$input" ] && PANEL_USER="$input"
         
-        read -s -p "  Password [$XUI_PASS]: " input_pass
+        read -s -p "  Panel Password: " input
         echo
-        [ -n "$input_pass" ] && XUI_PASS="$input_pass"
+        [ -n "$input" ] && PANEL_PASS="$input"
+    elif [[ "$confirm" =~ ^[Ee] ]]; then
+        echo -e "\n${BLUE}Edit settings:${NC}"
+        read -p "  Sub Port [$SUB_PORT]: " input
+        [ -n "$input" ] && SUB_PORT="$input"
+        
+        read -p "  Sub Path [$SUB_PATH]: " input
+        [ -n "$input" ] && SUB_PATH="$input"
+        
+        read -p "  Sub Domain [$SUB_DOMAIN]: " input
+        [ -n "$input" ] && SUB_DOMAIN="$input"
+        
+        read -p "  Panel Username [$PANEL_USER]: " input
+        [ -n "$input" ] && PANEL_USER="$input"
+        
+        read -s -p "  Panel Password (leave empty to skip): " input
+        echo
+        [ -n "$input" ] && PANEL_PASS="$input"
+    else
+        # Password is required to authenticate with panel API
+        if [ -z "$PANEL_PASS" ]; then
+            echo -e "\n${YELLOW}⚠ Password is required to authenticate with 3x-ui API${NC}"
+            read -s -p "  Enter panel password for '$PANEL_USER': " PANEL_PASS
+            echo
+        fi
+    fi
+    
+    # If password still empty, warn
+    if [ -z "$PANEL_PASS" ]; then
+        echo -e "${YELLOW}⚠ Warning: No password provided. You will need to edit pgclock.config manually.${NC}"
     fi
 }
 
@@ -162,27 +254,38 @@ install_project() {
     mkdir -p "views/templates/default"
     wget -q "$REPO_RAW/views/templates/default/sub.ejs" -O "views/templates/default/sub.ejs"
     
+    # Build the SUBSCRIPTION URL exactly as 3x-ui builds it
+    local sub_url="$SUB_BASE/${SUB_PATH}/"
+    
     echo -e "  ${BLUE}→ Generating pgclock.config...${NC}"
     cat > "$CONFIG_FILE" << EOF
 # ==========================================
 # Auto-generated by PGClock Smart Installer
+# Source: github.com/9800/PGClock-Fusion_xui
 # ==========================================
 
-PROTOCOL=$XUI_PROTOCOL
-HOST=$XUI_HOST
-PORT=$XUI_PORT
-PATH=$XUI_PATH
-USERNAME=$XUI_USER
-PASSWORD=$XUI_PASS
+# Panel connection settings (for API authentication)
+PROTOCOL=$SUB_PROTOCOL
+HOST=$SUB_DOMAIN
+PORT=$WEB_PORT
+PATH=$WEB_BASE_PATH
+USERNAME=$PANEL_USER
+PASSWORD=$PANEL_PASS
 
-SUBSCRIPTION=$SUB_BASE${XUI_PATH:+/$XUI_PATH}/sub/
+# Subscription URL (matches what 3x-ui uses)
+SUBSCRIPTION=$sub_url
 
-$([ -n "$CERT_PUBLIC" ] && echo "PUBLIC_KEY_PATH=$CERT_PUBLIC" || echo "#PUBLIC_KEY_PATH=")
-$([ -n "$CERT_PRIVATE" ] && echo "PRIVATE_KEY_PATH=$CERT_PRIVATE" || echo "#PRIVATE_KEY_PATH=")
+# SSL certificates for the template server (same as 3x-ui subscription)
+$([ -n "$SUB_CERT" ] && [ -f "$SUB_CERT" ] && echo "PUBLIC_KEY_PATH=$SUB_CERT" || echo "#PUBLIC_KEY_PATH=")
+$([ -n "$SUB_KEY" ] && [ -f "$SUB_KEY" ] && echo "PRIVATE_KEY_PATH=$SUB_KEY" || echo "#PRIVATE_KEY_PATH=")
 
+# Backup link (optional)
 Backup_link=
-SUB_HTTP_PORT=2082
-SUB_HTTPS_PORT=2083
+
+# Template server ports (same as 3x-ui subscription port!)
+SUB_HTTP_PORT=$SUB_PORT
+$([ "$SUB_PROTOCOL" = "https" ] && echo "SUB_HTTPS_PORT=$SUB_PORT" || echo "#SUB_HTTPS_PORT=")
+
 TEMPLATE_NAME=default
 BRAND_NAME=PGClock Fusion X-UI
 BRAND_LOGO=
@@ -235,11 +338,11 @@ EOF
     echo -e "${GREEN}✓ Service created and started${NC}"
 }
 
-# ========== STEP 6: Verify & Configure Panel ==========
+# ========== STEP 6: Verify & Show Instructions ==========
 configure_panel() {
-    echo -e "\n${YELLOW}[6/6] Configuring 3x-ui panel...${NC}"
+    echo -e "\n${YELLOW}[6/6] Verifying installation...${NC}"
     
-    local sub_template="$SUB_BASE:2082/sub/YOUR_USER_SUB_ID"
+    local sub_url="$SUB_BASE/${SUB_PATH}/{user.subId}"
     
     echo -e "\n${GREEN}╔════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║          ✓ Installation completed successfully!              ║${NC}"
@@ -249,19 +352,18 @@ configure_panel() {
     systemctl status PGCLOCK_XUI --no-pager -l | head -5
     
     echo -e "\n${BLUE}🔗 Template Subscription URL:${NC}"
-    echo -e "  ${YELLOW}$sub_template${NC}"
+    echo -e "  ${GREEN}$sub_url${NC}"
     
-    echo -e "\n${BLUE}📱 How to configure in 3x-ui:${NC}"
-    echo -e "  1. Open your 3x-ui panel"
-    echo -e "  2. Go to ${YELLOW}Inbounds${NC}"
-    echo -e "  3. For each inbound, click ${YELLOW}Edit${NC}"
-    echo -e "  4. Find ${YELLOW}Subscription URL${NC} field"
-    echo -e "  5. Replace it with:"
-    echo -e "     ${GREEN}$SUB_BASE:2082/sub/\${user.subId}${NC}"
+    echo -e "\n${BLUE}📊 Configuration Source:${NC}"
+    echo -e "  All settings were read ${GREEN}directly from 3x-ui database${NC}"
+    echo -e "  Database: ${BLUE}$XUI_DB${NC}"
+    echo -e "  Sub Port: ${GREEN}$SUB_PORT${NC} (from 'subPort' key)"
+    echo -e "  Sub Path: ${GREEN}$SUB_PATH${NC} (from 'subPath' key)"
+    echo -e "  Sub Domain: ${GREEN}$SUB_DOMAIN${NC} (from 'subDomain' key)"
     
-    echo -e "\n${BLUE}📊 Ports opened:${NC}"
-    echo -e "  ${GREEN}HTTP:  $XUI_HOST:2082${NC}"
-    [ -n "$CERT_PUBLIC" ] && echo -e "  ${GREEN}HTTPS: $XUI_HOST:2083${NC}"
+    echo -e "\n${BLUE}📱 Template server is now listening on:${NC}"
+    echo -e "  ${GREEN}$SUB_PROTOCOL://$SUB_DOMAIN:$SUB_PORT${NC}"
+    echo -e "  (Same port as 3x-ui subscription server!)"
     
     echo -e "\n${BLUE}🛠  Management Commands:${NC}"
     echo -e "  ${YELLOW}systemctl status PGCLOCK_XUI${NC}   - Check status"
@@ -269,16 +371,24 @@ configure_panel() {
     echo -e "  ${YELLOW}journalctl -u PGCLOCK_XUI -f${NC}   - View logs"
     echo -e "  ${YELLOW}nano $CONFIG_FILE${NC}  - Edit config"
     
-    echo -e "\n${YELLOW}⚠️  Important:${NC} Make sure ports ${GREEN}2082${NC} and ${GREEN}2083${NC} are open in your firewall."
+    echo -e "\n${YELLOW}⚠️  Important Notes:${NC}"
+    echo -e "  • Make sure port ${GREEN}$SUB_PORT${NC} is open in your firewall"
+    echo -e "  • The template server runs on the ${GREEN}same port${NC} as 3x-ui's subscription server"
+    echo -e "  • If 3x-ui subscription is disabled, the template will handle all requests"
+    echo -e "  • You may need to ${YELLOW}disable 3x-ui's built-in subscription server${NC} to avoid conflicts"
     
     if command -v ufw &> /dev/null; then
-        read -p "$(echo -e ${YELLOW}'[?] Open ports 2082/2083 in UFW firewall? (Y/n): '${NC})" open_fw
+        read -p "$(echo -e ${YELLOW}'[?] Open port $SUB_PORT in UFW firewall? (Y/n): '${NC})" open_fw
         if [[ ! "$open_fw" =~ ^[Nn] ]]; then
-            ufw allow 2082/tcp > /dev/null 2>&1
-            ufw allow 2083/tcp > /dev/null 2>&1
-            echo -e "${GREEN}✓ Firewall ports opened${NC}"
+            ufw allow "$SUB_PORT/tcp" > /dev/null 2>&1
+            echo -e "${GREEN}✓ Firewall port opened${NC}"
         fi
     fi
+    
+    echo -e "\n${BLUE}🎯 Next Steps:${NC}"
+    echo -e "  1. Verify template server is running: ${YELLOW}curl -s http://$SUB_DOMAIN:$SUB_PORT${NC}"
+    echo -e "  2. Test with a user's subId: ${YELLOW}$sub_url${NC}"
+    echo -e "  3. If 3x-ui's sub server conflicts, disable it in panel settings"
 }
 
 # ========== Uninstall ==========
@@ -292,7 +402,7 @@ uninstall_project() {
     echo -e "${GREEN}✓ Uninstalled${NC}"
 }
 
-# ========== Reinstall / Update ==========
+# ========== Update ==========
 update_project() {
     echo -e "\n${YELLOW}Updating PGClock Fusion...${NC}"
     systemctl stop PGCLOCK_XUI 2>/dev/null
@@ -319,7 +429,7 @@ show_menu() {
     echo -e "${BLUE}+--------------------------------------------------------------------+${NC}"
     echo -e "${BLUE}|        PGClock Fusion X-UI - Smart Management Menu                |${NC}"
     echo -e "${BLUE}+--------------------------------------------------------------------+${NC}"
-    echo -e "  ${GREEN}1.${NC} Install PGClock Fusion (Auto-detect 3x-ui)"
+    echo -e "  ${GREEN}1.${NC} Install PGClock Fusion (Auto-detect from 3x-ui DB)"
     echo -e "  ${GREEN}2.${NC} Update PGClock Fusion"
     echo -e "  ${GREEN}3.${NC} Edit Configuration"
     echo -e "  ${GREEN}4.${NC} View Service Status"
