@@ -1,34 +1,28 @@
-# 🚀 PGClock Fusion X-UI
+# 🚀 PGClock Fusion - Custom Subscription Template for 3x-ui
 
-قالب مدرن و زیبا برای نمایش اطلاعات اشتراک در پنل 3x-ui. این پروژه دیزاین خیره‌کننده [PGClock Fusion](https://github.com/Pasham0/PGClockFusion) را با معماری قدرتمند Node.js ترکیب می‌کند تا روی پنل **3x-ui** کار کند.
+قالب مدرن و زیبا برای صفحه سابسکریپشن 3x-ui بر اساس قابلیت رسمی Custom Templates.
 
 ## ✨ ویژگی‌ها
 
-- 🎨 **دیزاین Glassmorphism** با تم تیره/روشن
-- 🌍 **پشتیبانی کامل از فارسی و انگلیسی**
-- 📊 **نمایش زنده حجم و تاریخ انقضا** با حلقه‌های رنگی
-- 🕒 **ساعت زنده جلالی و میلادی**
-- 📱 **تب‌های مجزا** برای حساب، سرورها و اپلیکیشن‌ها
-- 🔒 **پشتیبانی از 2FA** (رمز دو مرحله‌ای)
-- 🤖 **نصب خودکار هوشمند** با تشخیص تنظیمات 3x-ui
-- 🎯 **بدون نیاز به تنظیمات دستی**
+- 🎨 دیزاین Glassmorphism با تم تیره/روشن
+- 🕒 ساعت زنده جلالی و میلادی
+- 📊 حلقه‌های مصرف حجم و زمان
+- 🌍 پشتیبانی کامل از فارسی و انگلیسی
+- 📱 لیست سرورها با کپی
+- 💬 لینک پشتیبانی
+- ⚡ کاملاً سریع (بدون سرور اضافی)
+- 🔒 امنیت بالا (خواندن مستقیم از دیتابیس 3x-ui)
 
-## 🛠 نصب تک‌خطی
-
-برای نصب روی سرور اوبونتو که 3x-ui روی آن نصب است:
+## 🚀 نصب
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/9800/PGClock-Fusion_xui/main/main.sh) install
+bash <(curl -Ls https://raw.githubusercontent.com/9800/PGClock-Fusion_xui/main/install.sh)
 ```
 
-## 📋 منوی مدیریت
+## ⚙️ تنظیم در پنل 3x-ui
 
-پس از نصب، برای دسترسی به منوی مدیریت:
+پس از نصب، در پنل 3x-ui:
 
-```bash
-bash <(curl -Ls https://raw.githubusercontent.com/9800/PGClock-Fusion_xui/main/main.sh)
-```
-
-## 🔧 تنظیم در پنل 3x-ui
-
-پس از نصب، آدرس اشتراک کاربران را در پنل 3x-ui به این شکل تغییر دهید:
+1. به مسیر **Panel Settings → Subscription Settings** بروید
+2. فیلد **Sub Theme Directory** را پیدا کنید
+3. این مسیر را وارد کنید:
